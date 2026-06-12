@@ -1,18 +1,16 @@
 package com.microtrack.model
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import java.time.Instant
-import jakarta.persistence.Column
-import jakarta.persistence.Convert
-import jakarta.persistence.Entity
-import jakarta.persistence.Id
+import java.sql.Timestamp
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class TrackingEvent(
-    val traceId: String?,
+    val traceId: String,
     val serviceName: String,
-    val timestamp: Instant,
-    val status: String?,
-    val durationMs: Long? = null,
-    val metadata: Map<String, Any>? = null
+    val timestamp: Timestamp,
+    val checkpointName: String,
+    val isError: Boolean,
+    val genericData: Any?,
+    val successorBy: List<String>?,
+    val durationMs: Long
 )

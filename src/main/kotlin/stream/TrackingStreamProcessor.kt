@@ -23,43 +23,61 @@ class TrackingStreamProcessor(
 
     @Bean
     fun buildTopology(builder: StreamsBuilder): Topology {
-        val serdeString = Serdes.String()
+        val eventStream = createEventStream(builder)
+        val aggregatedMetrics = aggregateEventsByServiceAndWindow(eventStream)
+        persistAggregatedMetrics(aggregatedMetrics)
+        
+        return builder.build()
+    }
 
-        val stream: KStream<String, TrackingEvent> =
-            builder.stream(inputTopic, Consumed.with(serdeString, eventSerde))
+    private fun createEventStream(builder: StreamsBuilder): KStream<String, TrackingEvent> {
+        return builder.stream(inputTopic, Consumed.with(Serdes.String(), eventSerde))
+    }
 
+    private fun aggregateEventsByServiceAndWindow(
+        stream: KStream<String, TrackingEvent>
+    ): KTable<Windowed<String>, ServiceAgg> {
         val windowSize = Duration.ofMinutes(1)
 
-        val aggregated: KTable<Windowed<String>, ServiceAgg> = stream
-            // Filtra eventos com serviceName nulo
-            .filter { _, value -> value.serviceName != null }
-            // Usa serviceName como chave
-            .map { _, value -> KeyValue(value.serviceName!!, value) }
+        return stream
+            .filter { _, event -> event.serviceName != null }
+            .map { _, event -> KeyValue(event.serviceName!!, event) }
             .groupByKey(Grouped.with(Serdes.String(), eventSerde))
             .windowedBy(TimeWindows.ofSizeWithNoGrace(windowSize))
             .aggregate(
                 { ServiceAgg(0L, 0.0, 0L) },
-                { _: String, newValue: TrackingEvent, agg: ServiceAgg ->
-                    val count = agg.count + 1
-                    val (sumDur, countWithDur) = if (newValue.durationMs != null) {
-                        agg.sumDuration + newValue.durationMs.toDouble() to (agg.countWithDuration + 1)
-                    } else {
-                        agg.sumDuration to agg.countWithDuration
-                    }
-                    ServiceAgg(count, sumDur, countWithDur)
-                },
+                { _, event, agg -> aggregateEvent(event, agg) },
                 Materialized.with(Serdes.String(), JsonSerde(ServiceAgg::class.java))
             )
+    }
 
+    private fun aggregateEvent(event: TrackingEvent, currentAgg: ServiceAgg): ServiceAgg {
+        val newCount = currentAgg.count + 1
+        val (newSumDuration, newCountWithDuration) = if (event.durationMs != null) {
+            currentAgg.sumDuration + event.durationMs.toDouble() to (currentAgg.countWithDuration + 1)
+        } else {
+            currentAgg.sumDuration to currentAgg.countWithDuration
+        }
+        return ServiceAgg(newCount, newSumDuration, newCountWithDuration)
+    }
+
+    private fun persistAggregatedMetrics(aggregated: KTable<Windowed<String>, ServiceAgg>) {
         aggregated.toStream().foreach { windowedKey, agg ->
             val serviceName = windowedKey.key()
             val windowStart = Instant.ofEpochMilli(windowedKey.window().start())
             val windowEnd = Instant.ofEpochMilli(windowedKey.window().end())
-            val avg = if (agg.countWithDuration > 0) agg.sumDuration / agg.countWithDuration else null
-            metricService.saveAggregate(serviceName, windowStart, windowEnd, agg.count, avg)
+            val averageDuration = calculateAverageDuration(agg)
+            
+            metricService.saveAggregate(serviceName, windowStart, windowEnd, agg.count, averageDuration)
         }
+    }
 
-        return builder.build()
+    private fun calculateAverageDuration(agg: ServiceAgg): Double? {
+        return if (agg.countWithDuration > 0) {
+            agg.sumDuration / agg.countWithDuration
+        } else {
+            null
+        }
     }
 
     data class ServiceAgg(
