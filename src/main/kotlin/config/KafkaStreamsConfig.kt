@@ -1,6 +1,6 @@
 package com.microtrack.config
 
-import com.microtrack.model.TrackingEvent
+import com.microtrack.model.TraceEvent
 import org.apache.kafka.common.serialization.Serdes
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -31,8 +31,8 @@ class KafkaStreamsConfig {
     }
 
     @Bean
-    fun trackingEventSerde(): JsonSerde<TrackingEvent> {
-        val serde = JsonSerde(TrackingEvent::class.java)
+    fun trackingEventSerde(): JsonSerde<TraceEvent> {
+        val serde = JsonSerde(TraceEvent::class.java)
         serde.deserializer().addTrustedPackages("*")
         return serde
     }

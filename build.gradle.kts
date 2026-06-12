@@ -33,6 +33,7 @@ dependencies {
 
     // Banco
     runtimeOnly("org.postgresql:postgresql")
+    implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.7.0")
 
     // Testes
     testImplementation("org.springframework.boot:spring-boot-starter-test")
