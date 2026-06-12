@@ -8,13 +8,12 @@ import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.kstream.*
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.support.serializer.JsonSerde
+import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.Instant
 
-@Configuration
+@Component
 class TrackingStreamProcessor(
     private val metricService: ServiceMetricService,
     private val traceEventService: TraceEventService,
@@ -23,14 +22,11 @@ class TrackingStreamProcessor(
 
     private val inputTopic = "trace-events"
 
-    @Bean
-    fun buildTopology(builder: StreamsBuilder): Topology {
+    fun configureStreams(builder: StreamsBuilder) {
         val eventStream = createEventStream(builder)
         persistTraceEvents(eventStream)
         val aggregatedMetrics = aggregateEventsByServiceAndWindow(eventStream)
         persistAggregatedMetrics(aggregatedMetrics)
-        
-        return builder.build()
     }
 
     private fun createEventStream(builder: StreamsBuilder): KStream<String, TraceEvent> {

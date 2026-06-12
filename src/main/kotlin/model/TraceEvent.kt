@@ -2,11 +2,12 @@ package com.microtrack.model
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import java.time.Instant
+import java.util.UUID
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class TraceEvent(
-    val traceId: String,
-    val spanId: String,
+    val traceId: UUID,
+    val spanId: UUID,
     val parentSpanId: String?,
 
     val serviceName: String,

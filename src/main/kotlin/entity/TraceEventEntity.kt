@@ -6,6 +6,7 @@ import io.hypersistence.utils.hibernate.type.json.JsonBinaryType
 import jakarta.persistence.*
 import org.hibernate.annotations.Type
 import java.time.Instant
+import java.util.UUID
 
 @Entity
 @Table(name = "trace_events", indexes = [
@@ -19,10 +20,10 @@ data class TraceEventEntity(
     val id: Long? = null,
 
     @Column(name = "trace_id", nullable = false)
-    val traceId: String,
+    val traceId: UUID,
 
     @Column(name = "span_id", nullable = false)
-    val spanId: String,
+    val spanId: UUID,
 
     @Column(name = "parent_span_id")
     val parentSpanId: String?,

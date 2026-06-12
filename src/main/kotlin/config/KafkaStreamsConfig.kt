@@ -1,7 +1,12 @@
 package com.microtrack.config
 
+import com.microtrack.model.LogEvent
 import com.microtrack.model.TraceEvent
+import com.microtrack.stream.LogStreamProcessor
+import com.microtrack.stream.TrackingStreamProcessor
 import org.apache.kafka.common.serialization.Serdes
+import org.apache.kafka.streams.StreamsBuilder
+import org.apache.kafka.streams.Topology
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -35,5 +40,23 @@ class KafkaStreamsConfig {
         val serde = JsonSerde(TraceEvent::class.java)
         serde.deserializer().addTrustedPackages("*")
         return serde
+    }
+
+    @Bean
+    fun logEventSerde(): JsonSerde<LogEvent> {
+        val serde = JsonSerde(LogEvent::class.java)
+        serde.deserializer().addTrustedPackages("*")
+        return serde
+    }
+
+    @Bean
+    fun kafkaStreamsTopology(
+        builder: StreamsBuilder,
+        trackingStreamProcessor: TrackingStreamProcessor,
+        logStreamProcessor: LogStreamProcessor
+    ): Topology {
+        trackingStreamProcessor.configureStreams(builder)
+        logStreamProcessor.configureStreams(builder)
+        return builder.build()
     }
 }
